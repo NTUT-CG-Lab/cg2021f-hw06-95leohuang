@@ -6,7 +6,20 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	<link type="text/css" rel="stylesheet" href="main.css">
+	<style>
+		#modelNum {
+			position: absolute;
+			left: 40%;
+			color: white;
+			margin: 5px;
+		}
 
+		.selection {
+			position: absolute;
+			left: 55%;
+			margin: 5px;
+		}
+	</style>
 </head>
 
 <body>
@@ -15,10 +28,13 @@
 		<a href="https://pytorch3d.org/tutorials/deform_source_mesh_to_target_mesh">
 			Deform a source mesh to form a target mesh using 3D loss functions</a><br>
 
-		<select class="selection">
-			<option value="dolphin">Dolphin</option>
-			<option value="cow">cow</option>
-		</select>
+		<div>
+			<select class="selection">
+				<option value="dolphin">Dolphin</option>
+				<option value="cow">cow</option>
+			</select>
+			<p id="modelNum"> iter #0</p>
+		</div>
 	</div>
 
 	<script src="scoreoutputer.min.js"></script>
@@ -141,8 +157,8 @@
 			function iterChanger() {
 				if (currentIter == effectController.step) return;
 				currentIter = effectController.step;
-				// var textTag = document.getElementById('modelNum');
-				// textTag.innerHTML = ""
+				var textTag = document.getElementById('modelNum');
+				textTag.innerHTML = "iter #" + models[currentIter - 1].toString();
 				for (let i = 0; i < models.length; i++) {
 					let item = scene.getObjectByName(models[i]);
 					if (i != currentIter - 1 && item.visible === true)
