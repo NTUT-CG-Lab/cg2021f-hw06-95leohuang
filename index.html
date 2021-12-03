@@ -6,6 +6,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	<link type="text/css" rel="stylesheet" href="main.css">
+
 </head>
 
 <body>
@@ -13,9 +14,10 @@
 		Pytorch3D Tutorial: <br>
 		<a href="https://pytorch3d.org/tutorials/deform_source_mesh_to_target_mesh">
 			Deform a source mesh to form a target mesh using 3D loss functions</a><br>
-		<select name="">
+
+		<select class="selection">
 			<option value="dolphin">Dolphin</option>
-			<option value="cat">Cat</option>
+			<option value="cow">cow</option>
 		</select>
 	</div>
 
@@ -38,7 +40,7 @@
 			so.addChild("場景顯示成果模型", 1, true);
 			so.addChild("執行pytorch3D程式碼產生25個模型", 2, true);
 			so.addChild("可拖動GUI顯示不同階段模型", 3, true);
-			so.addChild("可更換其他模型", 3, false);
+			so.addChild("可更換其他模型", 3, true);
 
 			//產生自評表，參數如下所示
 			so.renderModal(
@@ -82,16 +84,22 @@
 
 		import { GUI } from './jsm/libs/dat.gui.module.js';
 
-		let container;
+		let container, meshOrigin, mesh;
 
 		let camera, cameraTarget, scene, renderer;
+		let currentModel = 0;
+		let plyModel = ["dolphin", "cow"]
+
+		const loader = new PLYLoader();
 
 		// The iterations of pytorch3d models
 		const models = [0, 5, 10, 20, 30, 40, 50, 60, 80, 100, 130, 160, 190, 220, 250, 300, 400, 500, 600, 800, 1000, 1250, 1500, 1750, 2000];
 
+		const effectController = { step: 1 };
+		let currentIter = effectController.step;
+
 		init();
 		animate();
-
 		function init() {
 
 			container = document.createElement('div');
@@ -122,52 +130,14 @@
 
 			// PLY model files
 
-			const loader = new PLYLoader();
 
-			// Load original model according to model_id
-			loader.load('./models/dolphin.ply', function (geometry) {
+			loadOriginalPLY();
+			loadPLY();
 
-				const material = new THREE.MeshPhongMaterial({ color: 0xFF5555, specular: 0x111111, shininess: 200 });
-				geometry.computeVertexNormals();
-
-				const mesh = new THREE.Mesh(geometry, material);
-
-				mesh.position.set(-0.5, -0.5, 0);
-				mesh.scale.multiplyScalar(1.5);
-
-				mesh.castShadow = true;
-				mesh.receiveShadow = true;
-
-				scene.add(mesh);
-			});
-
-			// The material for pytorch3d model
-			const material = new THREE.MeshPhongMaterial({ color: 0xAAAAAA, specular: 0x111111, shininess: 200 });
-
-			// Load models of pytorch3d 
-			models.forEach(element => loader.load('./models/dolphin/model_' + element.toString() + '.ply',
-				function (geometry) {
-
-					geometry.computeVertexNormals();
-
-					const mesh = new THREE.Mesh(geometry, material);
-					mesh.name = element
-					mesh.position.set(0.5, -0.5, 0);
-					mesh.scale.multiplyScalar(1.5);
-
-					mesh.castShadow = true;
-					mesh.receiveShadow = true;
-					if (element !== 0)
-						mesh.visible = false
-
-					scene.add(mesh);
-				}));
 
 
 
 			//GUI
-			const effectController = { step: 1 };
-			let currentIter = effectController.step;
 			function iterChanger() {
 				if (currentIter == effectController.step) return;
 				currentIter = effectController.step;
@@ -181,6 +151,7 @@
 						item.visible = true;
 				}
 			}
+
 			const gui = new GUI();
 			gui.add(effectController, 'step', 1, models.length, 1).onChange(iterChanger);
 
@@ -207,8 +178,93 @@
 
 			window.addEventListener('resize', onWindowResize);
 
+			const selectElement = document.querySelector('.selection');
+
+			selectElement.addEventListener('change', (event) => {
+				let value = event.target.value
+				console.error(value)
+				switch (value) {
+					case 'dolphin':
+						currentModel = 0;
+						break;
+					case 'cow':
+						currentModel = 1;
+						break;
+				}
+				loadOriginalPLY();
+				loadPLY();
+			});
 		}
 
+		function loadOriginalPLY() {
+			// Load original model according to model_id
+
+			if (meshOrigin != null) {
+				scene.remove(meshOrigin);
+			}
+			loader.load('./models/' + plyModel[currentModel] + '.ply', function (geometry) {
+
+				const material = new THREE.MeshPhongMaterial({ color: 0xFF5555, specular: 0x111111, shininess: 200 });
+				geometry.computeVertexNormals();
+
+				meshOrigin = new THREE.Mesh(geometry, material);
+
+				if (currentModel == 0) {
+					meshOrigin.position.set(-0.5, -0.5, 0);
+					meshOrigin.scale.multiplyScalar(1.5);
+				}
+				else {
+					meshOrigin.position.set(0.5, 0, 0);
+					meshOrigin.rotation.set(4, 0, 0)
+					meshOrigin.scale.multiplyScalar(0.5);
+				}
+
+				meshOrigin.castShadow = true;
+				meshOrigin.receiveShadow = true;
+
+				scene.add(meshOrigin);
+			});
+		}
+
+		function loadPLY() {
+			// The material for pytorch3d model
+			const material = new THREE.MeshPhongMaterial({ color: 0xAAAAAA, specular: 0x111111, shininess: 200 });
+
+			if (mesh != null) {
+				scene.remove(mesh);
+
+				for (let i = 0; i < models.length; i++) {
+					let item = scene.getObjectByName(models[i]);
+					scene.remove(item)
+				}
+			}
+			// Load models of pytorch3d 
+			models.forEach(element => loader.load('./models/' + plyModel[currentModel] + '/model_' + element.toString() + '.ply',
+				function (geometry) {
+
+					geometry.computeVertexNormals();
+
+					mesh = new THREE.Mesh(geometry, material);
+					mesh.name = element
+
+					if (currentModel == 0) {
+						mesh.position.set(0.5, -0.5, 0);
+						mesh.scale.multiplyScalar(1.5);
+					}
+					else {
+						mesh.position.set(-0.5, 0, 0);
+						mesh.rotation.set(7, 0, 0)
+						mesh.scale.multiplyScalar(0.5);
+					}
+					mesh.castShadow = true;
+					mesh.receiveShadow = true;
+					if (element !== models[currentIter - 1])
+						mesh.visible = false
+
+					scene.add(mesh);
+				}));
+
+		}
 
 		function addShadowedLight(x, y, z, color, intensity) {
 
@@ -260,6 +316,7 @@
 			renderer.render(scene, camera);
 
 		}
+
 
 	</script>
 </body>
